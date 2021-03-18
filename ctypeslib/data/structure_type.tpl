@@ -97,8 +97,61 @@ class Structure(ctypes.Structure, AsDictMixin):
             ))
         return cls(**fields)
 
+    def __repr__(self, padding=''):
+        repr_str = '[' + self.__class__.__name__ + ']' + '\n'
+        field_names = list(self.__class__._field_names_())
+        field_count = len(field_names)
+        for i in range(field_count):
+            is_not_last = (i < field_count - 1)
+            repr_str += padding
+            repr_str += '├╴' if is_not_last else '└╴'
+            repr_str += field_names[i] + ': '
+            attr = getattr(self, field_names[i])
+            if isinstance(attr, (Union, Structure)):
+                padding_next = padding + ('│  ' if is_not_last else '   ')
+                repr_str += attr.__repr__(padding_next)
+            else:
+                repr_str += attr.__repr__() + '\n'
+        return repr_str
+
 
 class Union(ctypes.Union, AsDictMixin):
-    pass
+    def __init__(self, *args, **kwds):
+        # We don't want to use positional arguments fill PADDING_* fields
+
+        args = dict(zip(self.__class__._field_names_(), args))
+        args.update(kwds)
+        super(Structure, self).__init__(**args)
+
+    @classmethod
+    def _field_names_(cls):
+        if hasattr(cls, '_fields_'):
+            return (f[0] for f in cls._fields_ if not f[0].startswith('PADDING'))
+        else:
+            return ()
+
+    @classmethod
+    def get_type(cls, field):
+        for f in cls._fields_:
+            if f[0] == field:
+                return f[1]
+        return None
+
+    def __repr__(self, padding=''):
+        repr_str = '[' + self.__class__.__name__ + ']' + '\n'
+        field_names = list(self.__class__._field_names_())
+        field_count = len(field_names)
+        for i in range(field_count):
+            is_not_last = (i < field_count - 1)
+            repr_str += padding
+            repr_str += '├╴' if is_not_last else '└╴'
+            repr_str += field_names[i] + ': '
+            attr = getattr(self, field_names[i])
+            if isinstance(attr, (Union, Structure)):
+                padding_next = padding + ('│  ' if is_not_last else '   ')
+                repr_str += attr.__repr__(padding_next)
+            else:
+                repr_str += attr.__repr__() + '\n'
+        return repr_str
 
 
