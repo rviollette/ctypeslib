@@ -121,7 +121,7 @@ class Union(ctypes.Union, AsDictMixin):
 
         args = dict(zip(self.__class__._field_names_(), args))
         args.update(kwds)
-        super(Structure, self).__init__(**args)
+        super(Union, self).__init__(**args)
 
     @classmethod
     def _field_names_(cls):
