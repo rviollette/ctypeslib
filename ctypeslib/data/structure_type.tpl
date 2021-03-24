@@ -40,15 +40,7 @@ class AsDictMixin:
         return result
 
 
-class Structure(ctypes.Structure, AsDictMixin):
-
-    def __init__(self, *args, **kwds):
-        # We don't want to use positional arguments fill PADDING_* fields
-
-        args = dict(zip(self.__class__._field_names_(), args))
-        args.update(kwds)
-        super(Structure, self).__init__(**args)
-
+class IStructureUnion(object):
     @classmethod
     def _field_names_(cls):
         if hasattr(cls, '_fields_'):
@@ -62,6 +54,32 @@ class Structure(ctypes.Structure, AsDictMixin):
             if f[0] == field:
                 return f[1]
         return None
+
+    def __str__(self, padding=''):
+        str_out = '[' + self.__class__.__name__ + ']' + '\n'
+        field_names = list(self.__class__._field_names_())
+        field_count = len(field_names)
+        for i in range(field_count):
+            is_not_last = (i < field_count - 1)
+            str_out += padding
+            str_out += '├╴' if is_not_last else '└╴'
+            str_out += field_names[i] + ': '
+            attr = getattr(self, field_names[i])
+            if isinstance(attr, (Union, Structure)):
+                padding_next = padding + ('│  ' if is_not_last else '   ')
+                str_out += attr.__str__(padding_next)
+            else:
+                str_out += attr.__str__() + '\n'
+        return str_out
+
+
+class Structure(ctypes.Structure, IStructureUnion, AsDictMixin):
+
+    def __init__(self, *args, **kwds):
+        # We don't want to use positional arguments fill PADDING_* fields
+        args = dict(zip(self.__class__._field_names_(), args))
+        args.update(kwds)
+        super(Structure, self).__init__(**args)
 
     @classmethod
     def bind(cls, bound_fields):
@@ -97,61 +115,11 @@ class Structure(ctypes.Structure, AsDictMixin):
             ))
         return cls(**fields)
 
-    def __str__(self, padding=''):
-        str_out = '[' + self.__class__.__name__ + ']' + '\n'
-        field_names = list(self.__class__._field_names_())
-        field_count = len(field_names)
-        for i in range(field_count):
-            is_not_last = (i < field_count - 1)
-            str_out += padding
-            str_out += '├╴' if is_not_last else '└╴'
-            str_out += field_names[i] + ': '
-            attr = getattr(self, field_names[i])
-            if isinstance(attr, (Union, Structure)):
-                padding_next = padding + ('│  ' if is_not_last else '   ')
-                str_out += attr.__str__(padding_next)
-            else:
-                str_out += attr.__str__() + '\n'
-        return str_out
 
+class Union(ctypes.Union, IStructureUnion, AsDictMixin):
 
-class Union(ctypes.Union, AsDictMixin):
     def __init__(self, *args, **kwds):
         # We don't want to use positional arguments fill PADDING_* fields
-
         args = dict(zip(self.__class__._field_names_(), args))
         args.update(kwds)
         super(Union, self).__init__(**args)
-
-    @classmethod
-    def _field_names_(cls):
-        if hasattr(cls, '_fields_'):
-            return (f[0] for f in cls._fields_ if not f[0].startswith('PADDING'))
-        else:
-            return ()
-
-    @classmethod
-    def get_type(cls, field):
-        for f in cls._fields_:
-            if f[0] == field:
-                return f[1]
-        return None
-
-    def __str__(self, padding=''):
-        str_out = '[' + self.__class__.__name__ + ']' + '\n'
-        field_names = list(self.__class__._field_names_())
-        field_count = len(field_names)
-        for i in range(field_count):
-            is_not_last = (i < field_count - 1)
-            str_out += padding
-            str_out += '├╴' if is_not_last else '└╴'
-            str_out += field_names[i] + ': '
-            attr = getattr(self, field_names[i])
-            if isinstance(attr, (Union, Structure)):
-                padding_next = padding + ('│  ' if is_not_last else '   ')
-                str_out += attr.__str__(padding_next)
-            else:
-                str_out += attr.__str__() + '\n'
-        return str_out
-
-
