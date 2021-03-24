@@ -72,6 +72,9 @@ class IStructureUnion(object):
                 str_out += attr.__str__() + '\n'
         return str_out
 
+    def str_raw_memory(self):
+        return '[' + ' '.join(f'{byte:02x}' for byte in bytes(self)) + ']'
+
 
 class Structure(ctypes.Structure, IStructureUnion, AsDictMixin):
 
