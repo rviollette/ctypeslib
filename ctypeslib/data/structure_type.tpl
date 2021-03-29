@@ -56,18 +56,30 @@ class IStructureUnion(object):
         return None
 
     def __str__(self, padding=''):
-        str_out = '[' + self.__class__.__name__ + ']' + '\n'
-        field_names = list(self.__class__._field_names_())
+        cls = self.__class__
+        str_out = '[' + cls.__name__ + ']' + '\n'
+        field_names = list(cls._field_names_())
         field_count = len(field_names)
-        for i in range(field_count):
-            is_not_last = (i < field_count - 1)
+        for (i, field_name) in enumerate(field_names):
+            is_last = (i == field_count - 1)
             str_out += padding
-            str_out += '├╴' if is_not_last else '└╴'
-            str_out += field_names[i] + ': '
-            attr = getattr(self, field_names[i])
+            str_out += '└╴' if is_last else '├╴'
+            str_out += field_name + ': '
+            attr = getattr(self, field_name)
             if isinstance(attr, (Union, Structure)):
-                padding_next = padding + ('│  ' if is_not_last else '   ')
+                padding_next = padding + ('   ' if is_last else '│  ')
                 str_out += attr.__str__(padding_next)
+            elif isinstance(attr, int):
+                # is boolean bitfield ?
+                # https://stackoverflow.com/a/23135252/1641819
+                attr_cls = getattr(cls, field_name)
+                if hasattr(attr_cls, 'size') and attr_cls.size >> 16 == 1:
+                    # Print as boolean
+                    str_out += str(bool(attr)) + '\n'
+                else:
+                    # Print as hex integer
+                    str_out += f'{attr:#04x}\n'
+                # end else
             else:
                 str_out += attr.__str__() + '\n'
         return str_out
